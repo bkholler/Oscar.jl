@@ -3,16 +3,16 @@
 ###################################################
 
 function group_sum(pm::GroupBasedPhylogeneticModel, states::Vector{Int})
-  group = group_of_model(pm)
+  group = collect(group_of_model(pm))
   return sum(group[states])
 end
 
 function is_zero_group_sum(pm::GroupBasedPhylogeneticModel, states::Vector{Int})
-  return group_sum(pm, states) == zero(parent(group_of_model(pm)[1]))
+  return group_sum(pm, states) == zero(group_of_model(pm))
 end
   
 function which_group_element(pm::GroupBasedPhylogeneticModel, elem::FinGenAbGroupElem)
-  group = group_of_model(pm)
+  group = collect(group_of_model(pm))
   return findall([all(g==elem) for g in group])[1]
 end
 
@@ -38,7 +38,7 @@ end
 function f_group_based_matrix(M, G)
   ns = ncols(M)
   g_elems = collect(G)
-  f = Dict{FinGenAbGroupElem, typeof(matrices[edgs[1]][1,1])}()
+  f = Dict{FinGenAbGroupElem, typeof(M[1,1])}()
   for i in 1:ns
       for j in 1:ns
           if haskey(f, g_elems[i] - g_elems[j]) && f[g_elems[i] - g_elems[j]] != M[i,j]; error(M, " does not have a group structure"); end
@@ -69,7 +69,7 @@ function discrete_fourier_transform(M::MatElem, G::FinGenAbGroup; fourier_param_
   return fourier_param
 end
 
-function fourier_params_from_matrices(matrices::Dict{Edge, MatElem{T}}, G::FinGenAbGroup; F::Field=QQ) where T <: MPolyRingElem
+function fourier_params_from_matrices(matrices::Dict{Edge, MatElem}, G::FinGenAbGroup; fourier_param_name::String = "x", F::Field=QQ) 
   
   edgs = sort_edges(graph_from_edges(Directed,collect(keys(matrices))))
   
@@ -90,7 +90,6 @@ function fourier_params_from_matrices(matrices::Dict{Edge, MatElem{T}}, G::FinGe
       inject_xe = hom(R, S, x[[findfirst(y .== S.S) for y in R.S]])
       fourier_param[edgs[i]] = [inject_xe(y) for y in f_params[i]]    
   end
-
 
   return(S, fourier_param)
 end

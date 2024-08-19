@@ -5,9 +5,9 @@
 struct PhylogeneticModel
   graph::Graph{Directed}
   n_states::Int
-  prob_ring::MPolyRing{QQFieldElem}
+  prob_ring::MPolyRing
   root_distr::Vector{Any}
-  trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
+  trans_matrices::Dict{Edge, MatElem{<: MPolyRingElem}}
 end
 
 function Base.show(io::IO, pm::PhylogeneticModel)
@@ -27,9 +27,9 @@ end
 
 struct GroupBasedPhylogeneticModel
   phylo_model::PhylogeneticModel
-  fourier_ring::MPolyRing{QQFieldElem}
-  fourier_params::Dict{Edge, Vector{QQMPolyRingElem}}
-  group::Vector{FinGenAbGroupElem}
+  fourier_ring::MPolyRing
+  fourier_params::Dict{Edge, Vector{MPolyRingElem}}
+  group::FinGenAbGroup
 end
 
 function Base.show(io::IO, pm::GroupBasedPhylogeneticModel)
@@ -242,10 +242,10 @@ Group-based phylogenetic model on a tree with 3 leaves and 3 edges
  and the Fourier parameters are [x[i, 1] x[i, 2]].
 ```
 """
-function cavender_farris_neyman_model(graph::Graph{Directed})
+function cavender_farris_neyman_model(graph::Graph{Directed}; F::Field = QQ)
   ns = 2
   ne = n_edges(graph)
-  R, list_a, list_b = polynomial_ring(QQ, :a => 1:ne, :b => 1:ne; cached=false)
+  R, list_a, list_b = polynomial_ring(F, :a => 1:ne, :b => 1:ne; cached=false)
   
   root_distr = repeat([1//ns], outer = ns)
   edgs = sort_edges(graph)
@@ -254,15 +254,11 @@ function cavender_farris_neyman_model(graph::Graph{Directed})
     b a]) for (a,b,e) in zip(list_a, list_b, edgs)
   )
   
-  S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:2); cached=false)
-  fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
-    [list_x[i,1], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
-  
-    G = collect(abelian_group(2))
-    group = [G[1],G[2]]
+  G = abelian_group(2)
+  (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
 end
 
 @doc raw"""
@@ -283,7 +279,7 @@ Group-based phylogenetic model on a tree with 3 leaves and 3 edges
  and the Fourier parameters are [x[i, 1] x[i, 2] x[i, 2] x[i, 2]].
 ```
 """
-function jukes_cantor_model(graph::Graph{Directed})
+function jukes_cantor_model(graph::Graph{Directed}; F::Field = QQ)
   ns = 4
   ne = n_edges(graph)
   R, list_a, list_b = polynomial_ring(QQ, :a => 1:ne, :b => 1:ne; cached=false)
@@ -296,17 +292,12 @@ function jukes_cantor_model(graph::Graph{Directed})
     b b a b
     b b b a]) for (a,b,e) in zip(list_a, list_b, edgs)
   )
-  
-  S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:2); cached=false)
-  fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
-    [list_x[i,1], list_x[i,2], list_x[i,2], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
-  
-  #group = [[0,0], [0,1], [1,0], [1,1]]
-  G = collect(abelian_group(2,2))
-  group = [G[1],G[3],G[2],G[4]]
+    
+  G = abelian_group(2,2)
+  (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
 end
 
 @doc raw"""
@@ -327,7 +318,7 @@ Group-based phylogenetic model on a tree with 3 leaves and 3 edges
  and the Fourier parameters are [x[i, 1] x[i, 3] x[i, 2] x[i, 2]].
 ```
 """
-function kimura2_model(graph::Graph{Directed})
+function kimura2_model(graph::Graph{Directed}; F::Field = QQ)
   ns = 4
   ne = n_edges(graph)
   R, list_a, list_b, list_c = polynomial_ring(QQ, :a => 1:ne, :b => 1:ne, :c => 1:ne; cached=false)
@@ -341,15 +332,11 @@ function kimura2_model(graph::Graph{Directed})
     b c b a]) for (a,b,c,e) in zip(list_a, list_b, list_c, edgs)
   )
 
-  S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:3); cached=false)
-  fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
-    [list_x[i,1], list_x[i,3], list_x[i,2], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
-  
-  G = collect(abelian_group(2,2))
-  group = [G[1],G[3],G[2],G[4]]
+  G = abelian_group(2,2)
+  (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
 end
 
 @doc raw"""
@@ -370,7 +357,7 @@ Group-based phylogenetic model on a tree with 3 leaves and 3 edges
  and the Fourier parameters are [x[i, 1] x[i, 2] x[i, 3] x[i, 4]].
 ```
 """
-function kimura3_model(graph::Graph{Directed})
+function kimura3_model(graph::Graph{Directed}; F::Field = QQ)
   ns = 4
   ne = n_edges(graph)
   R, list_a, list_b , list_c, list_d= polynomial_ring(QQ, :a => 1:ne, :b => 1:ne, :c => 1:ne, :d => 1:ne; cached=false)
@@ -384,12 +371,8 @@ function kimura3_model(graph::Graph{Directed})
     d c b a]) for (a,b,c,d,e) in zip(list_a, list_b, list_c, list_d, edgs)
   )
 
-  S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:4); cached=false)
-  fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
-    [list_x[i,1], list_x[i,2], list_x[i,3], list_x[i,4]] for (i, e) in zip(1:ne, edgs))
-  
-  G = collect(abelian_group(2,2))
-  group = [G[1],G[3],G[2],G[4]]
+  G = abelian_group(2,2)
+  (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
   return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
