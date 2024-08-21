@@ -25,6 +25,7 @@ export root_distribution
 export fourier_parameters
 export fourier_ring
 export group_of_model
+export group_bijection
 
 #export probability and fourier map
 export probability_map

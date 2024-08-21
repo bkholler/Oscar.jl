@@ -106,7 +106,7 @@ function monomial_fourier(pm::GroupBasedPhylogeneticModel, leaves_states::Vector
   for edge in edges(gr)
     dsc = vertex_descendants(dst(edge), gr, [])
     elem = group_sum(pm, leaves_states[dsc])
-    monomial = monomial * param[edge][which_group_element(pm, elem)]
+    monomial = monomial * param[edge][state_group_element(pm, elem)]
   end
   return monomial
 end

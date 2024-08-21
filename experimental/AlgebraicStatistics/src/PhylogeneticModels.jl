@@ -6,7 +6,7 @@ struct PhylogeneticModel
   graph::Graph{Directed}
   n_states::Int
   prob_ring::MPolyRing
-  root_distr::Vector{Any}
+  root_distr::Vector
   trans_matrices::Dict{Edge, MatElem{<: MPolyRingElem}}
 end
 
@@ -29,7 +29,7 @@ struct GroupBasedPhylogeneticModel
   phylo_model::PhylogeneticModel
   fourier_ring::MPolyRing
   fourier_params::Dict{Edge, Vector{MPolyRingElem}}
-  group::FinGenAbGroup
+  group_bijection::Dict{Int, FinGenAbGroupElem}
 end
 
 function Base.show(io::IO, pm::GroupBasedPhylogeneticModel)
@@ -212,15 +212,18 @@ Returns the group the `GroupBasedPhylogeneticModel` `pm` is based on.
 julia> pm = jukes_cantor_model(graph_from_edges(Directed,[[4,1],[4,2],[4,3]]));
 
 julia> group_of_model(pm)
-4-element Vector{FinGenAbGroupElem}:
- [0, 0]
- [0, 1]
- [1, 0]
- [1, 1]
+(Z/2)^2
+
+julia> Oscar.group_bijection(pm)
+Dict{Int64, FinGenAbGroupElem} with 4 entries:
+  4 => [1, 1]
+  2 => [0, 1]
+  3 => [1, 0]
+  1 => [0, 0]
 ```
 """
-group_of_model(pm::GroupBasedPhylogeneticModel) = pm.group
-
+group_of_model(pm::GroupBasedPhylogeneticModel) = parent(pm.group_bijection[1])
+group_bijection(pm::GroupBasedPhylogeneticModel) = pm.group_bijection
 
 ############################
 #### GROUP-BASED MODELS ####
@@ -256,9 +259,10 @@ function cavender_farris_neyman_model(graph::Graph{Directed}; F::Field = QQ)
   
   G = abelian_group(2)
   (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
+  group_bijection = Dict{Int,FinGenAbGroupElem}(1 => G([0]), 2 => G([1]))
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group_bijection)
 end
 
 @doc raw"""
@@ -295,9 +299,11 @@ function jukes_cantor_model(graph::Graph{Directed}; F::Field = QQ)
     
   G = abelian_group(2,2)
   (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
+  group_bijection = Dict{Int,FinGenAbGroupElem}(1 => G([0,0]), 2 => G([0,1]), 3 => G([1,0]), 4 => G([1,1]))
+
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group_bijection)
 end
 
 @doc raw"""
@@ -334,9 +340,10 @@ function kimura2_model(graph::Graph{Directed}; F::Field = QQ)
 
   G = abelian_group(2,2)
   (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
+  group_bijection = Dict{Int,FinGenAbGroupElem}(1 => G([0,0]), 2 => G([0,1]), 3 => G([1,0]), 4 => G([1,1]))
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, G)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group_bijection)
 end
 
 @doc raw"""
@@ -373,9 +380,10 @@ function kimura3_model(graph::Graph{Directed}; F::Field = QQ)
 
   G = abelian_group(2,2)
   (S, fourier_param) = fourier_params_from_matrices(matrices, G, F=F)
+  group_bijection = Dict{Int,FinGenAbGroupElem}(1 => G([0,0]), 2 => G([0,1]), 3 => G([1,0]), 4 => G([1,1]))
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group_bijection)
 end
 
 
@@ -484,29 +492,7 @@ function phylogenetic_model_from_matrices(matrices::Dict{Edge, MatElem{T}}; root
   PhylogeneticModel(graph_from_edges(Directed,edgs), ns, R, root_distr, matrices)
 end
 
-function phylogenetic_model_input_check(matrices::Dict{Edge, MatElem{T}}; root_distr::Vector=[]) where T <: MPolyRingElem
-  edgs = collect(keys(matrices))
-  ns = unique([ncols(matrices[edgs[i]]) for i in 1:length(edgs)])
-
-  if !all(is_square.(collect(values(matrices)))); error("Not all matrices are square"); end
-  if length(ns) != 1; error("Matrices of different size"); end
-  if length(unique(typeof.(collect(values(matrices))))) > 1; error("Matrices of different type"); end
-  if length(unique(base_ring.(collect(values(matrices))))) > 1; error("Matrices defined in different polynomial rings"); end
-
-  if !isempty(root_distr) && length(root_distr) != ns[1]; error("Different number of states on transition matrices and and distribution at the root"); end
-  if length(unique(typeof.(root_distr))) > 1; error("Entries of root distribution of different type"); end
-
-  if !isempty(root_distr)
-      r = root_distr[1]; m = matrices[edgs[1]][1,1]
-      if !isa(r, Number)
-          F_m = coefficient_ring(m)
-          F_r = coefficient_ring(r)
-          if F_m != F_r; error("Transition matrices and distribution at the root defined in different fields"); end
-      end
-  end
-end
-
-function group_based_phylogenetic_model_from_matrices(matrices::Dict{Edge, MatElem{T}}, G::FinGenAbGroup; root_distr::Vector=[], fourier_param_name::String = "x") where T <: MPolyRingElem
+function group_based_phylogenetic_model_from_matrices(matrices::Dict{Edge, MatElem{T}}, G::FinGenAbGroup; root_distr::Vector=[], fourier_param_name::String = "x", F::Field=QQ) where T <: MPolyRingElem
   # phylogenetic_model_input_check(matrices; root_distr=root_distr)
    is_group_based_model(matrices, G)
  
@@ -519,7 +505,7 @@ function group_based_phylogenetic_model_from_matrices(matrices::Dict{Edge, MatEl
        pm = phylogenetic_model_from_matrices(matrices; root_distr=root_distr)
    end
 
-   (S, fourier_param) = fourier_params_from_matrices(matrices, G)
+   (S, fourier_param) = fourier_params_from_matrices(matrices, G, fourier_param_name=fourier_param_name, F=F)
    
    GroupBasedPhylogeneticModel(pm, S, fourier_param, collect(G))
 end

@@ -3,17 +3,21 @@
 ###################################################
 
 function group_sum(pm::GroupBasedPhylogeneticModel, states::Vector{Int})
-  group = collect(group_of_model(pm))
-  return sum(group[states])
+  group_states = group_bijection(pm)
+  return sum([group_states[s] for s in states])
 end
 
 function is_zero_group_sum(pm::GroupBasedPhylogeneticModel, states::Vector{Int})
   return group_sum(pm, states) == zero(group_of_model(pm))
 end
   
-function which_group_element(pm::GroupBasedPhylogeneticModel, elem::FinGenAbGroupElem)
-  group = collect(group_of_model(pm))
-  return findall([all(g==elem) for g in group])[1]
+function state_group_element(pm::GroupBasedPhylogeneticModel, elem::FinGenAbGroupElem)
+  group_states = group_bijection(pm)
+  for (key, val) in group_states
+    if val == elem
+        return key 
+    end 
+  end 
 end
 
 function is_group_based_model(matrices::Dict{Edge, MatElem{T}}, G::FinGenAbGroup) where T <: MPolyRingElem
@@ -58,7 +62,7 @@ function discrete_fourier_transform(M::MatElem, G::FinGenAbGroup; fourier_param_
       f̂[g_elems[i]] = sum([QQ(X[i,j])*f[g_elems[j]] for j in 1:length(g_elems)])
   end
 
-  unique_vals = unique(collect(values(f̂)))
+  unique_vals = unique([f̂[k] for k in g_elems])
   if fourier_param_idx != 0
       S, x = polynomial_ring(QQ, fourier_param_name => (fourier_param_idx:fourier_param_idx, 1:length(unique_vals)); cached=false)
       fourier_param = [x[1, findfirst(unique_vals .== f̂[g])] for g in g_elems]
@@ -95,6 +99,31 @@ function fourier_params_from_matrices(matrices::Dict{Edge, MatElem}, G::FinGenAb
 end
 
 
+###############
+#### CHECK ####
+###############
+
+function phylogenetic_model_input_check(matrices::Dict{Edge, MatElem{T}}; root_distr::Vector=[]) where T <: MPolyRingElem
+  edgs = collect(keys(matrices))
+  ns = unique([ncols(matrices[edgs[i]]) for i in 1:length(edgs)])
+
+  if !all(is_square.(collect(values(matrices)))); error("Not all matrices are square"); end
+  if length(ns) != 1; error("Matrices of different size"); end
+  if length(unique(typeof.(collect(values(matrices))))) > 1; error("Matrices of different type"); end
+  if length(unique(base_ring.(collect(values(matrices))))) > 1; error("Matrices defined in different polynomial rings"); end
+
+  if !isempty(root_distr) && length(root_distr) != ns[1]; error("Different number of states on transition matrices and and distribution at the root"); end
+  if length(unique(typeof.(root_distr))) > 1; error("Entries of root distribution of different type"); end
+
+  if !isempty(root_distr)
+      r = root_distr[1]; m = matrices[edgs[1]][1,1]
+      if !isa(r, Number)
+          F_m = coefficient_ring(m)
+          F_r = coefficient_ring(r)
+          if F_m != F_r; error("Transition matrices and distribution at the root defined in different fields"); end
+      end
+  end
+end
 
 ########################################
 #### AUXILIARY FUNCTIONS FOR GRAPHS ####
