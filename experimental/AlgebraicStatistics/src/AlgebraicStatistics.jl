@@ -1,4 +1,5 @@
 include("CI.jl")
+include("GraphIndexedRing.jl")
 include("Markov.jl")
 include("GraphicalModels.jl")
 
@@ -6,6 +7,9 @@ include("PhylogeneticModels.jl")
 include("PhylogeneticAuxiliary.jl")
 include("PhylogeneticParametrization.jl")
 include("PhylogeneticInvariants.jl")
+
+# export rings
+export graph_indexed_ring
 
 #export models
 export cavender_farris_neyman_model
