@@ -9,3 +9,11 @@ function load_phylogenetic_model(tree_model_id::String)
         end
     end
 end
+
+@doc raw"""
+    load_phylogenetic_model(tree_model_id::String)
+
+Loads a phylogenetic model using the identifier given on the website. 
+The identifier has the form tree_id-model_id, e.g. "3-0-0-JC" for the star3 graph
+with Jukes-Cantor model. 
+"""
