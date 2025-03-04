@@ -26,7 +26,10 @@ function Base.show(io::IO, pm::PhylogeneticModel)
 end
 
 struct GroupBasedPhylogeneticModel
-  phylo_model::PhylogeneticModel
+  graph::Graph{Directed}
+  n_states::Int
+  root_distribution::Vector{Any}
+  trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
   fourier_ring::MPolyRing{QQFieldElem}
   fourier_params::Dict{Edge, Vector{QQMPolyRingElem}}
   group::Vector{FinGenAbGroupElem}
@@ -55,7 +58,11 @@ end
 #########################################################################
 #### ATTRIBUTES OF PhylogeneticModel AND GroupBasedPhylogeneticModel ####
 #########################################################################
-@doc raw"""
+
+### TO BE DELETED 
+
+
+#= @doc raw"""
     phylogenetic_model(pm::GroupBasedPhylogeneticModel)
 
 Return the complete information of a `PhylogeneticModel` or `GroupBasedPhylogeneticModel` `pm`.
@@ -74,7 +81,7 @@ Phylogenetic model on a tree with 3 leaves and 3 edges
   b[i] b[i] b[i] a[i]]. 
 ```
 """
-phylogenetic_model(pm::GroupBasedPhylogeneticModel) = pm.phylo_model
+phylogenetic_model(pm::GroupBasedPhylogeneticModel) = pm.phylo_model =#
 
 @doc raw"""
     graph(pm::PhylogeneticModel)
@@ -91,7 +98,7 @@ Directed graph with 4 nodes and the following edges:
 ```
 """
 graph(pm::PhylogeneticModel) = pm.graph
-graph(pm::GroupBasedPhylogeneticModel) = pm.phylo_model.graph
+graph(pm::GroupBasedPhylogeneticModel) = pm.graph
 
 @doc raw"""
     number_states(pm::PhylogeneticModel)
@@ -107,7 +114,7 @@ julia> number_states(pm)
 ```
 """
 number_states(pm::PhylogeneticModel) = pm.n_states
-number_states(pm::GroupBasedPhylogeneticModel) = pm.phylo_model.n_states
+number_states(pm::GroupBasedPhylogeneticModel) = pm.n_states
 
 @doc raw"""
     transition_matrices(pm::PhylogeneticModel)
@@ -126,7 +133,7 @@ Dict{Edge, MatElem{QQMPolyRingElem}} with 3 entries:
 ```
 """
 transition_matrices(pm::PhylogeneticModel) = pm.trans_matrices
-transition_matrices(pm::GroupBasedPhylogeneticModel) = pm.phylo_model.trans_matrices
+transition_matrices(pm::GroupBasedPhylogeneticModel) = pm.trans_matrices
 
 @doc raw"""
     probability_ring(pm::PhylogeneticModel)
@@ -143,7 +150,6 @@ Multivariate polynomial ring in 6 variables a[1], a[2], a[3], b[1], ..., b[3]
 ```
 """
 probability_ring(pm::PhylogeneticModel) = pm.prob_ring
-probability_ring(pm::GroupBasedPhylogeneticModel) = pm.phylo_model.prob_ring
 
 @doc raw"""
     root_distribution(pm::PhylogeneticModel)
@@ -163,7 +169,7 @@ julia> root_distribution(pm)
 ```
 """
 root_distribution(pm::PhylogeneticModel) = pm.root_distr
-root_distribution(pm::GroupBasedPhylogeneticModel) = pm.phylo_model.root_distr
+root_distribution(pm::GroupBasedPhylogeneticModel) = pm.root_distr
 
 @doc raw"""
     fourier_parameters(pm::GroupBasedPhylogeneticModel)
@@ -258,7 +264,7 @@ function cavender_farris_neyman_model(graph::Graph{Directed})
   group = [G[1],G[2]]
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
 end
 
 @doc raw"""
@@ -301,7 +307,7 @@ function jukes_cantor_model(graph::Graph{Directed})
   group = [G[1],G[3],G[2],G[4]]
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
 end
 
 @doc raw"""
@@ -343,7 +349,7 @@ function kimura2_model(graph::Graph{Directed})
   group = [G[1],G[3],G[2],G[4]]
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
 end
 
 @doc raw"""
@@ -385,7 +391,7 @@ function kimura3_model(graph::Graph{Directed})
   group = [G[1],G[3],G[2],G[4]]
 
   pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(pm, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
 end
 
 ##############################
@@ -458,13 +464,16 @@ end
 
 function affine_phylogenetic_model!(pm::GroupBasedPhylogeneticModel)
   gr = graph(pm)
+  ns = number_states(pm)
   affine_pm = affine_phylogenetic_model!(pm.phylo_model)
+  root_distribution = root_distribution(affine_pm)
+  trans_mat = transition_matrices(affine_pm)
   fourier_param = fourier_parameters(pm)
   S = fourier_ring(pm)
   for e in edges(gr)
     fourier_param[e][1] = S(1)
   end
-  return GroupBasedPhylogeneticModel(affine_pm, S, fourier_param, group_of_model(pm))
+  return GroupBasedPhylogeneticModel(gr, ns, root_distribution, trans_mat, S, fourier_param, group(pm))
 end
 
 #######################################################
@@ -517,12 +526,11 @@ function group_based_phylogenetic_model_from_matrices(matrices::Dict{Edge, MatEl
   is_group_based_model(matrices, G)
   edgs = collect(keys(matrices))
   ns = ncols(matrices[edgs[i]]) 
+  gr = graph_from_edges(Directed,  edgs)
   if length(root_distr) == 0
-    pm = phylogenetic_model_from_matrices(matrices; root_distr=repeat([1 / ns], ns))
-  else
-    pm = phylogenetic_model_from_matrices(matrices; root_distr=root_distr)
+    root_distr = repeat([1 // ns], ns)
   end
   (S, fourier_param) = fourier_params_from_matrices(matrices, G)
-  GroupBasedPhylogeneticModel(pm, S, fourier_param, collect(G))
+  return GroupBasedPhylogeneticModel(gr, ns, root_distr, matrices, S, fourier_param, collect(G))
 end
 
