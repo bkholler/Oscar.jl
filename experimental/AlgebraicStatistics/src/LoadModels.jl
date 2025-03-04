@@ -1,13 +1,8 @@
 function load_phylogenetic_model(tree_model_id::String)
-    try
-        file_path = joinpath(oscardir, "data", "AlgebraicStatistics",  "PhylogeneticModels", tree_model_id * ".mrdi")
-        phylo_model = load(file_path)
-        return phylo_model
-    catch e 
-        if isa(e, SystemError)
-            println("You possibly did not enter the identifier in the correct format: treeid-modelid.mrdi, e.g. '3-0-0-JC.mrdi'.")
-        end
-    end
+    file_path = joinpath(oscardir, "data", "AlgebraicStatistics",  "PhylogeneticModels", tree_model_id * ".mrdi")
+    @req ispath(file_path) "Could not find model $tree_model_id, either the model has not been stored or the identifier was not entered correctly e.g. 3-0-0-JC"
+    phylo_model = load(file_path)
+    return phylo_model
 end
 
 @doc raw"""
