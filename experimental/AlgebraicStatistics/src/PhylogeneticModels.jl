@@ -28,7 +28,7 @@ end
 struct GroupBasedPhylogeneticModel
   graph::Graph{Directed}
   n_states::Int
-  root_distribution::Vector{Any}
+  root_distr::Vector{Any}
   trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
   fourier_ring::MPolyRing{QQFieldElem}
   fourier_params::Dict{Edge, Vector{QQMPolyRingElem}}
