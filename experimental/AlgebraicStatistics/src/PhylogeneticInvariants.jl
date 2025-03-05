@@ -25,6 +25,18 @@ end
 
 ################################################################################
 # Parametrizations
+function parameterization(pm::PhylogeneticModel)
+  ### This function should only take one instance of PhylogeneticModel, just as parameterization(G::GraphicalModel) does.
+  p = probability_map(pm);
+  p = compute_equivalent_classes(p)
+  parametrization = p.parametrization
+  indices = collect(keys(parametrization))
+
+  R = param_ring(pm) # We need to edit this function and add a new one s.t. pm contains a phylogenetic ring, i.e. it gets calculated at creation. 
+  
+end
+
+
 function parametrization(F::Field, pm::PhylogeneticModel; var_name::VarName="p")
   p = probability_map(pm);
   p = compute_equivalent_classes(p)

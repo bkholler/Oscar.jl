@@ -6,6 +6,7 @@ struct PhylogeneticModel
   graph::Graph{Directed}
   n_states::Int
   prob_ring::MPolyRing{QQFieldElem}
+  param_ring::PhylogeneticRing
   root_distr::Vector{Any} #this need to become more precise
   trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
 end
@@ -204,6 +205,8 @@ Multivariate polynomial ring in 6 variables x[1, 1], x[2, 1], x[3, 1], x[1, 2], 
 ```
 """
 fourier_ring(pm::GroupBasedPhylogeneticModel) = pm.fourier_ring
+
+param_ring(pm::PhylogeneticModel) = pm.param_ring
 
 @doc raw"""
     group_of_model(pm::GroupBasedPhylogeneticModel)
@@ -421,6 +424,8 @@ function general_markov_model(graph::Graph{Directed}; number_states = 4)
 
   edgs = sort_edges(graph)
   matrices = Dict{Edge, MatElem}(e => matrix(R, reshape(list_m[i,:,:], ns, ns)) for (i,e) in zip(1:ne, edgs))
+
+  param_ring = phylogenetic_ring(base_ring(R), )
 
   return PhylogeneticModel(graph, ns, R, root_distr, matrices)
 end
