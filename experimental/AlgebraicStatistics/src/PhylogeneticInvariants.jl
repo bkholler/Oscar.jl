@@ -13,6 +13,18 @@ function phylogenetic_ring(F::Field, varindices::Vector{Tuple{Vararg{Int64}}}; v
   return PhylogeneticRing(S, p)
 end
 
+## I need to put a temporary function here that allows for different vector types as argument (since I am unable to cast to Vector{Tuple{Vararg{Int64}}} right now)
+
+function phylogenetic_ring(F::Field, varindices::Matrix{Vector{Int64}}; var_name::VarName="p")
+  varnames = ["$var_name[$(join(x, ", "))]" for x in varindices]
+  S, s = polynomial_ring(F, varnames)
+  p = Dict([varindices[i] => s[i] for i in 1:length(varindices)])
+
+  return PhylogeneticRing(S, p)
+end
+
+
+
 phylogenetic_ring(varindices::Vector{Tuple{Vararg{Int64}}}; var_name::VarName="p") = phylogenetic_ring(QQ, varindices; var_name=var_name)
 ring(R::PhylogeneticRing) = R.ring
 base_ring(R::PhylogeneticRing) = base_ring(ring(R))

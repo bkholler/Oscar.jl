@@ -425,9 +425,12 @@ function general_markov_model(graph::Graph{Directed}; number_states = 4)
   edgs = sort_edges(graph)
   matrices = Dict{Edge, MatElem}(e => matrix(R, reshape(list_m[i,:,:], ns, ns)) for (i,e) in zip(1:ne, edgs))
 
-  param_ring = phylogenetic_ring(base_ring(R), )
+  leaves_indices = collect.(Iterators.product([collect(1:ns) for _ in leaves(graph)]...))
+  leaves_indices = reshape(leaves_indices, ns^ne, 1)
 
-  return PhylogeneticModel(graph, ns, R, root_distr, matrices)
+  param_ring = phylogenetic_ring(base_ring(R), leaves_indices, var_name="p")
+
+  return PhylogeneticModel(graph, ns, R, param_ring, root_distr, matrices) 
 end
 
 
