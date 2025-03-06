@@ -31,8 +31,9 @@ struct GroupBasedPhylogeneticModel
   n_states::Int
   root_distr::Vector{Any}
   trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
-  fourier_ring::MPolyRing{QQFieldElem}
+  phylo_ring::PhylogeneticRing
   fourier_params::Dict{Edge, Vector{QQMPolyRingElem}}
+  param_ring::MPolyRing
   group::Vector{FinGenAbGroupElem}
 end
 
@@ -295,6 +296,7 @@ function jukes_cantor_model(graph::Graph{Directed})
   
   root_distr = repeat([1//ns], outer = ns)
   edgs = sort_edges(graph)
+
   matrices = Dict{Edge, MatElem}(e => matrix(R, [
     a b b b
     b a b b
@@ -304,13 +306,17 @@ function jukes_cantor_model(graph::Graph{Directed})
   S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:2); cached=false)
   fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
     [list_x[i,1], list_x[i,2], list_x[i,2], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
+
+  leaves_indices = collect.(Iterators.product([collect(1:ns) for _ in leaves(graph)]...))
+  leaves_indices = reshape(leaves_indices, ns^ne, 1)
+  p_ring = phylogenetic_ring(base_ring(S), leaves_indices, var_name="p")
+
   
   #group = [[0,0], [0,1], [1,0], [1,1]]
   G = collect(abelian_group(2,2))
   group = [G[1],G[3],G[2],G[4]]
 
-  pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, p_ring, fourier_param,S, group)
 end
 
 @doc raw"""
