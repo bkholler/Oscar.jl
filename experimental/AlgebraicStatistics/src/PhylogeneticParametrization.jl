@@ -18,9 +18,10 @@ function monomial_parametrization(pm::PhylogeneticModel, states::Dict{Int, Int})
   return monomial
 end
 
-function monomial_parametrization(pm::GroupBasedPhylogeneticModel, states::Dict{Int, Int})
+# not needed anymore
+#= function monomial_parametrization(pm::GroupBasedPhylogeneticModel, states::Dict{Int, Int})
   monomial_parametrization(phylogenetic_model(pm), states)
-end
+end =#
 
 function probability_parametrization(pm::PhylogeneticModel, leaves_states::Vector{Int})
   gr = graph(pm)
@@ -42,10 +43,11 @@ function probability_parametrization(pm::PhylogeneticModel, leaves_states::Vecto
   return poly
 end 
 
-function probability_parametrization(pm::GroupBasedPhylogeneticModel, leaves_states::Vector{Int})
+# not needed anymore
+#= function probability_parametrization(pm::GroupBasedPhylogeneticModel, leaves_states::Vector{Int})
   probability_parametrization(phylogenetic_model(pm), leaves_states)
 end
- 
+  =#
 @doc raw"""
     probability_map(pm::PhylogeneticModel)    
 
@@ -305,7 +307,8 @@ julia> specialized_fourier_transform(pm, p_equivclasses.classes, q_equivclasses.
 """
 function specialized_fourier_transform(pm::GroupBasedPhylogeneticModel, p_classes::Dict{Tuple{Vararg{Int64}}, Vector{Tuple{Vararg{Int64}}}}, 
                                        q_classes::Dict{Tuple{Vararg{Int64}}, Vector{Tuple{Vararg{Int64}}}})
-    R = probability_ring(pm)
+    # TODO: Change logic here. 
+    R = param_ring(pm)
     ns = number_states(pm)
     
     np = length(p_classes)
@@ -361,7 +364,7 @@ julia> inverse_specialized_fourier_transform(pm, p_equivclasses.classes, q_equiv
 """
 function inverse_specialized_fourier_transform(pm::GroupBasedPhylogeneticModel, p_classes::Dict{Tuple{Vararg{Int64}}, Vector{Tuple{Vararg{Int64}}}}, 
                                                q_classes::Dict{Tuple{Vararg{Int64}}, Vector{Tuple{Vararg{Int64}}}})
-  R = probability_ring(pm)
+  R = param_ring(pm)
   ns = number_states(pm)
 
   np = length(p_classes)

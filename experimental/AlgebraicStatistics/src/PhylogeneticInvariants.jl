@@ -1,3 +1,5 @@
+export PhylogeneticRing
+
 struct PhylogeneticRing
   ring::Ring
   gens::Dict
@@ -21,6 +23,13 @@ function phylogenetic_ring(F::Field, varindices::Matrix{Vector{Int64}}; var_name
   p = Dict([varindices[i] => s[i] for i in 1:length(varindices)])
 
   return PhylogeneticRing(S, p)
+end
+
+function phylogenetic_ring(S::MPolyRing, graph::Graph{Dicrected}, n_var::Int64)
+  leaves_indices = collect.(Iterators.product([collect(1:ns) for _ in leaves(graph)]...))
+  leaves_indices = reshape(leaves_indices, n_var, 1)
+  p_ring = phylogenetic_ring(base_ring(S), leaves_indices, var_name="p")
+  return p_ring
 end
 
 
@@ -56,7 +65,7 @@ function parametrization(F::Field, pm::PhylogeneticModel; var_name::VarName="p")
   indices = collect(keys(parametrization))
 
   R = phylogenetic_ring(F, indices, var_name=var_name)
-  S = probability_ring(pm)
+  S = param_ring(pm)
   S, = polynomial_ring(F, vcat([string(x) for x in gens(S)]))
 
   hom(ring(R), S, reduce(vcat, [change_coefficient_ring(F, parametrization[k]) for k in indices]))

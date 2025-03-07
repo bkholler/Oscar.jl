@@ -5,8 +5,8 @@
 struct PhylogeneticModel
   graph::Graph{Directed}
   n_states::Int
-  prob_ring::MPolyRing{QQFieldElem}
-  param_ring::PhylogeneticRing
+  param_ring::MPolyRing{QQFieldElem}
+  phylogenetic_ring::PhylogeneticRing
   root_distr::Vector{Any} #this need to become more precise
   trans_matrices::Dict{Edge, MatElem{QQMPolyRingElem}}
 end
@@ -151,7 +151,7 @@ Multivariate polynomial ring in 6 variables a[1], a[2], a[3], b[1], ..., b[3]
   over rational field
 ```
 """
-probability_ring(pm::PhylogeneticModel) = pm.prob_ring
+param_ring(pm::PhylogeneticModel) = pm.param_ring
 
 @doc raw"""
     root_distribution(pm::PhylogeneticModel)
@@ -205,8 +205,8 @@ Multivariate polynomial ring in 6 variables x[1, 1], x[2, 1], x[3, 1], x[1, 2], 
   over rational field
 ```
 """
-fourier_ring(pm::GroupBasedPhylogeneticModel) = pm.fourier_ring
-
+# fourier_ring(pm::GroupBasedPhylogeneticModel) = pm.fourier_ring
+# FKA probability_ring
 param_ring(pm::PhylogeneticModel) = pm.param_ring
 
 @doc raw"""
@@ -264,11 +264,12 @@ function cavender_farris_neyman_model(graph::Graph{Directed})
   fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
     [list_x[i,1], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
   
+  p_ring = phylogenetic_ring(base_ring(S), graph, ns^ne)
+
   G = collect(abelian_group(2))
   group = [G[1],G[2]]
 
-  pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, p_ring, fourier_param, S,  group)
 end
 
 @doc raw"""
@@ -307,10 +308,7 @@ function jukes_cantor_model(graph::Graph{Directed})
   fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
     [list_x[i,1], list_x[i,2], list_x[i,2], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
 
-  leaves_indices = collect.(Iterators.product([collect(1:ns) for _ in leaves(graph)]...))
-  leaves_indices = reshape(leaves_indices, ns^ne, 1)
-  p_ring = phylogenetic_ring(base_ring(S), leaves_indices, var_name="p")
-
+  p_ring = phylogenetic_ring(base_ring(S), graph, ns^ne)
   
   #group = [[0,0], [0,1], [1,0], [1,1]]
   G = collect(abelian_group(2,2))
@@ -354,11 +352,12 @@ function kimura2_model(graph::Graph{Directed})
   fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
     [list_x[i,1], list_x[i,3], list_x[i,2], list_x[i,2]] for (i, e) in zip(1:ne, edgs))
   
+  p_ring = phylogenetic_ring(base_ring(S), graph, ns^ne)
+
   G = collect(abelian_group(2,2))
   group = [G[1],G[3],G[2],G[4]]
 
-  pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, p_ring, fourier_param, S, group)
 end
 
 @doc raw"""
@@ -395,12 +394,13 @@ function kimura3_model(graph::Graph{Directed})
   S, list_x = polynomial_ring(QQ, :x => (1:ne, 1:4); cached=false)
   fourier_param = Dict{Edge, Vector{QQMPolyRingElem}}(e => 
     [list_x[i,1], list_x[i,2], list_x[i,3], list_x[i,4]] for (i, e) in zip(1:ne, edgs))
+
+  p_ring = phylogenetic_ring(base_ring(S), graph, ns^ne)
+
   
   G = collect(abelian_group(2,2))
   group = [G[1],G[3],G[2],G[4]]
-
-  pm = PhylogeneticModel(graph, ns, R, root_distr, matrices)
-  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, S, fourier_param, group)
+  return GroupBasedPhylogeneticModel(graph, ns, root_distr, matrices, p_ring, fourier_param, S, group)
 end
 
 ##############################
@@ -473,7 +473,7 @@ function affine_phylogenetic_model!(pm::PhylogeneticModel)
   end
   r = root_distribution(pm)
   r[1] = 1 - sum(r[2:ns])
-  return PhylogeneticModel(gr, ns, probability_ring(pm), root_distribution(pm), trans_mat)
+  return PhylogeneticModel(gr, ns, param_ring(pm), root_distribution(pm), trans_mat)
 end
 
 function affine_phylogenetic_model!(pm::GroupBasedPhylogeneticModel)

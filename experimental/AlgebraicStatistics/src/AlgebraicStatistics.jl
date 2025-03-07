@@ -21,7 +21,7 @@ export phylogenetic_model
 export graph
 export number_states
 export transition_matrices
-export probability_ring
+export param_ring
 export root_distribution
 export fourier_parameters
 export fourier_ring
