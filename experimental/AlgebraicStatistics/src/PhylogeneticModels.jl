@@ -154,6 +154,25 @@ Multivariate polynomial ring in 6 variables a[1], a[2], a[3], b[1], ..., b[3]
 param_ring(pm::PhylogeneticModel) = pm.param_ring
 
 @doc raw"""
+    param_ring(pm::GroupBasedPhylogeneticModel)
+
+Return the ring of Fourier coordinates of the `PhylogeneticModel` `pm`.
+
+# Examples
+```jldoctest
+julia> pm = jukes_cantor_model(graph_from_edges(Directed,[[4,1],[4,2],[4,3]]));
+
+julia> param_ring(pm)
+Multivariate polynomial ring in 6 variables x[1, 1], x[2, 1], x[3, 1], x[1, 2], ..., x[3, 2]
+  over rational field
+```
+"""
+
+# fourier_ring(pm::GroupBasedPhylogeneticModel) = pm.fourier_ring
+# FKA probability_ring
+param_ring(pm::PhylogeneticModel) = pm.param_ring
+
+@doc raw"""
     root_distribution(pm::PhylogeneticModel)
 
 Return the distribution of the random variable at the root of the tree specifying the `PhylogeneticModel` `pm`.
@@ -192,24 +211,6 @@ Dict{Edge, Vector{QQMPolyRingElem}} with 3 entries:
 fourier_parameters(pm::GroupBasedPhylogeneticModel) = pm.fourier_params
 
 @doc raw"""
-    fourier_ring(pm::GroupBasedPhylogeneticModel)
-
-Return the ring of Fourier coordinates of the `PhylogeneticModel` `pm`.
-
-# Examples
-```jldoctest
-julia> pm = jukes_cantor_model(graph_from_edges(Directed,[[4,1],[4,2],[4,3]]));
-
-julia> fourier_ring(pm)
-Multivariate polynomial ring in 6 variables x[1, 1], x[2, 1], x[3, 1], x[1, 2], ..., x[3, 2]
-  over rational field
-```
-"""
-# fourier_ring(pm::GroupBasedPhylogeneticModel) = pm.fourier_ring
-# FKA probability_ring
-param_ring(pm::PhylogeneticModel) = pm.param_ring
-
-@doc raw"""
     group_of_model(pm::GroupBasedPhylogeneticModel)
 
 Return the group the `GroupBasedPhylogeneticModel` `pm` is based on.
@@ -232,6 +233,10 @@ group_of_model(pm::GroupBasedPhylogeneticModel) = pm.group
 ############################
 #### GROUP-BASED MODELS ####
 ############################
+
+function group_based_phylogenetic_model(pm::GroupBasedPhylogeneticModel, n_states::Int64, )
+
+end
 
 @doc raw"""
     cavender_farris_neyman_model(graph::Graph{Directed})
