@@ -1,3 +1,5 @@
+export PhylogeneticRing
+
 struct PhylogeneticRing
   ring::Ring
   gens::Dict
@@ -13,6 +15,25 @@ function phylogenetic_ring(F::Field, varindices::Vector{Tuple{Vararg{Int64}}}; v
   return PhylogeneticRing(S, p)
 end
 
+## I need to put a temporary function here that allows for different vector types as argument (since I am unable to cast to Vector{Tuple{Vararg{Int64}}} right now)
+
+function phylogenetic_ring(F::Field, varindices::Matrix{Vector{Int64}}; var_name::VarName="p")
+  varnames = ["$var_name[$(join(x, ", "))]" for x in varindices]
+  S, s = polynomial_ring(F, varnames)
+  p = Dict([varindices[i] => s[i] for i in 1:length(varindices)])
+
+  return PhylogeneticRing(S, p)
+end
+
+function phylogenetic_ring(S::MPolyRing, graph::Graph{Dicrected}, n_var::Int64)
+  leaves_indices = collect.(Iterators.product([collect(1:ns) for _ in leaves(graph)]...))
+  leaves_indices = reshape(leaves_indices, n_var, 1)
+  p_ring = phylogenetic_ring(base_ring(S), leaves_indices, var_name="p")
+  return p_ring
+end
+
+
+
 phylogenetic_ring(varindices::Vector{Tuple{Vararg{Int64}}}; var_name::VarName="p") = phylogenetic_ring(QQ, varindices; var_name=var_name)
 ring(R::PhylogeneticRing) = R.ring
 base_ring(R::PhylogeneticRing) = base_ring(ring(R))
@@ -25,6 +46,18 @@ end
 
 ################################################################################
 # Parametrizations
+function parameterization(pm::PhylogeneticModel)
+  ### This function should only take one instance of PhylogeneticModel, just as parameterization(G::GraphicalModel) does.
+  p = probability_map(pm);
+  p = compute_equivalent_classes(p)
+  parametrization = p.parametrization
+  indices = collect(keys(parametrization))
+
+  R = param_ring(pm) # We need to edit this function and add a new one s.t. pm contains a phylogenetic ring, i.e. it gets calculated at creation. 
+  
+end
+
+
 function parametrization(F::Field, pm::PhylogeneticModel; var_name::VarName="p")
   p = probability_map(pm);
   p = compute_equivalent_classes(p)
@@ -32,7 +65,7 @@ function parametrization(F::Field, pm::PhylogeneticModel; var_name::VarName="p")
   indices = collect(keys(parametrization))
 
   R = phylogenetic_ring(F, indices, var_name=var_name)
-  S = probability_ring(pm)
+  S = param_ring(pm)
   S, = polynomial_ring(F, vcat([string(x) for x in gens(S)]))
 
   hom(ring(R), S, reduce(vcat, [change_coefficient_ring(F, parametrization[k]) for k in indices]))
