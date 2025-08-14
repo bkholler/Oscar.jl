@@ -190,6 +190,35 @@ function directed_edges_matrix(M::GaussianGraphicalModel{Directed, L}) where L
 end
 
 @doc raw"""
+    directed_edges_matrix(M::GaussianGraphicalModel{Mixed, L}) where L
+
+Create the weighted adjacency matrix $\Lambda$ of a directed graph `G` whose entries are the parameter ring of the graphical model `M`.
+
+## Examples
+
+```jldoctest
+julia> GM = gaussian_graphical_model(graph_from_edges(Directed, [[1,2], [2,3]]))
+Gaussian Graphical Model on a Directed graph with 3 nodes and 2 edges
+
+julia> directed_edges_matrix(GM)
+[0   l[1, 2]         0]
+[0         0   l[2, 3]]
+[0         0         0]
+
+```
+"""
+function directed_edges_matrix(M::GaussianGraphicalModel{Mixed, L}) where L
+  G = directed_component(graph(M))
+  R, l, w = parameter_ring(M)
+  n =  n_vertices(G)
+  lambda = zero_matrix(R, n, n)
+  for e in edges(G)
+    lambda[src(e), dst(e)] = l[src(e), dst(e)]
+  end
+  return lambda
+end
+
+@doc raw"""
     error_covariance_matrix(M::GaussianGraphicalModel{Directed, L}) where L
 
 Create the covariance matrix $ \Omega $ of the independent error terms in a directed Gaussian graphical model `M`
