@@ -143,19 +143,21 @@ end
 
 @attr Tuple{
   MPolyRing,
+  GenDict,
   GenDict
 } function parameter_ring(GM::GaussianGraphicalModel{Mixed, T}; cached=false) where T
   G = graph(GM)
   D = directed_component(G)
   U = undirected_component(G)
+  n = length(vertices(D))
   gen_names = (["$(varnames(GM)[:l])[$(src(e)), $(dst(e))]" for e in edges(D)],
-               ["$(varnames(GM)[:w])[$(v), $(v)]" for v in vertices(G)], 
+               ["$(varnames(GM)[:w])[$(v)]" for v in vertices(G)], 
                ["$(varnames(GM)[:w])[$(src(e)), $(dst(e))]" for e in edges(U)])
   R, d_gens, v_gens, u_gens = polynomial_ring(QQ, gen_names; cached=cached)
-  gens_dict = merge(Dict(e => d_gens[i] for (i, e) in enumerate(edges(D))),
-                    Dict((v, v) => v_gens[v] for v in 1:n_vertices(G)),
-                    Dict(e => d_gens[i] for (i, e) in enumerate(edges(U))))
-  return R, gens_dict
+  l_gens_dict = Dict((src(e), dst(e)) => d_gens[i] for (i, e) in enumerate(edges(D)))
+  w_gens_dict = merge(Dict(v => v_gens[v] for v in 1:n_vertices(G)),
+                      Dict((src(e), dst(e)) => u_gens[i] for (i, e) in enumerate(edges(U))))
+  return R, l_gens_dict, w_gens_dict
 end
 
 @doc raw"""
@@ -232,12 +234,12 @@ julia> error_covariance_matrix(M)
 """
 function error_covariance_matrix(M::GaussianGraphicalModel{Mixed, L}) where L
   G = undirected_component(graph(M))
-  R, gens_dict = parameter_ring(M)
-  W = diagonal_matrix(R, [gens_dict[i] for i in 1:n_vertices(G)])
+  R, l, w = parameter_ring(M)
+  W = diagonal_matrix(R, [w[i] for i in 1:n_vertices(G)])
 
   for e in edges(G)
-    W[dst(e), src(e)] = W[e]
-    W[src(e), dst(e)] = W[e]
+    W[dst(e), src(e)] = w[src(e), dst(e)]
+    W[src(e), dst(e)] = w[src(e), dst(e)]
   end
 
   return W
